@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>编程猫社区已经死多长时间了</title>
+<link rel="icon" href="https://hachimlab.top/favicon.ico">
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #16181d;
+    --dim: #6b7280;
+    --faint: #b9bfc9;
+    --accent: #f2541d;
+
+    /* 统一的纵向节奏，全部改动只需调这几个值。
+       收得比较紧，是为了把评论区顶进第一屏 */
+    --gap-title: clamp(20px, 3.2vh, 32px);
+    --gap-clock: clamp(14px, 2.2vh, 22px);
+    --gap-block: clamp(22px, 3.6vh, 34px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { height: 100%; }
+
+  body {
+    min-height: 100svh;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 44%, rgba(242, 84, 29, 0.06), transparent 72%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* 不再占满整屏 —— 让评论区尽量挤进第一眼的视野 */
+  .hero {
+    display: flex;
+    justify-content: center;
+    padding: clamp(20px, 3.5vh, 36px) clamp(20px, 5vw, 40px) clamp(20px, 3vh, 32px);
+  }
+
+  .stack {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+  }
+
+  /* ── 轮播 ───────────────────────────────── */
+  .carousel {
+    position: relative;
+    /* 22vh 这一项只在矮屏幕上生效：高屏幕永远吃 210px 上限，观感不变 */
+    width: clamp(150px, min(38vw, 22vh), 210px);
+    aspect-ratio: 1 / 1;
+    /* 原来这段下间距挂在指示器上，指示器去掉后移到这里 */
+    margin: 0 auto clamp(24px, 3.4vh, 34px);
+    border: 1px solid rgba(107, 114, 128, 0.16);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #f4f5f7;
+  }
+
+  .carousel img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .7s ease;
+  }
+
+  .carousel img.on { opacity: 1; }
+
+  /* ── 标题 ───────────────────────────────── */
+  h1 {
+    font-size: clamp(0.92rem, 3.2vw, 1.25rem);
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    /* 字距会在末字右侧留出空白，补偿一半让整行真正居中 */
+    padding-left: 0.18em;
+    color: var(--dim);
+    margin-bottom: var(--gap-title);
+  }
+
+  /* ── 计时 ───────────────────────────────── */
+  .timer {
+    font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* 天 —— 主角 */
+  .days-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: clamp(6px, 1.4vw, 14px);
+    line-height: 1;
+  }
+
+  .days {
+    /* 同理，20vh 只在矮屏幕上收紧，宽屏依旧顶到 10.5rem */
+    font-size: clamp(3.6rem, min(19vw, 20vh), 10.5rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    /* 负字距会从右侧收掉 0.03em，补回来数字才真正压在中线上 */
+    padding-right: 0.03em;
+    line-height: 0.9;
+    color: var(--fg);
+  }
+
+  .days-unit {
+    font-size: clamp(1.05rem, 3.6vw, 1.85rem);
+    font-weight: 400;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  /* 左侧等宽占位，抵消右侧「天」的宽度，让数字严格落在页面中线上 */
+  .days-unit.ghost {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* 时分秒毫秒 —— 一行读完，段间距统一 */
+  .clock {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    margin-top: var(--gap-clock);
+    font-size: clamp(1rem, 4vw, 1.65rem);
+    line-height: 1;
+    gap: clamp(10px, 2.4vw, 20px);
+  }
+
+  .seg {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.26em;
+  }
+
+  .seg b {
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--accent);
+  }
+
+  .seg i {
+    font-style: normal;
+    font-weight: 400;
+    font-size: 0.62em;
+    color: var(--dim);
+  }
+
+  /* 毫秒：同色系压一档，既不抢戏也不糊成一团 */
+  .ms { opacity: 0.55; }
+
+  /* ── 描述 ───────────────────────────────── */
+  .desc {
+    /* 分隔线去掉后，它两侧的留白改由这里单独提供 */
+    margin-top: var(--gap-block);
+    font-size: clamp(0.78rem, 2.2vw, 0.92rem);
+    line-height: 1.95;
+    color: var(--dim);
+    letter-spacing: 0.06em;
+    padding-left: 0.06em;
+    /* 中文可在任意两字间断行，strict 会挡住「」和标点落在行首行尾 */
+    line-break: strict;
+    text-wrap: pretty;
+  }
+
+  .desc strong {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  /* 每句自成一段，段间留一点呼吸；句内放不下才换行 */
+  .desc .ln { display: block; }
+  .desc .ln + .ln { margin-top: 0.7em; }
+  .desc .nb { white-space: nowrap; }
+
+  /* ── 操作 ───────────────────────────────── */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: var(--gap-block);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 22px;
+    font-family: inherit;
+    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    letter-spacing: 0.1em;
+    padding-left: calc(22px + 0.1em);
+    color: var(--dim);
+    text-decoration: none;
+    white-space: nowrap;
+    background: transparent;
+    border: 1px solid rgba(107, 114, 128, 0.28);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+  }
+
+  .btn:hover {
+    color: var(--accent);
+    border-color: rgba(242, 84, 29, 0.5);
+    background: rgba(242, 84, 29, 0.05);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .btn.done {
+    color: var(--accent);
+    border-color: rgba(242, 84, 29, 0.5);
+  }
+
+  /* ── 评论区 ─────────────────────────────── */
+  .comments {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 40px) clamp(56px, 10vh, 96px);
+  }
+
+  .comments-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: clamp(24px, 4vh, 40px);
+    font-size: clamp(0.78rem, 2.2vw, 0.9rem);
+    letter-spacing: 0.16em;
+    padding-left: 0.16em;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .comments-head::before,
+  .comments-head::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(107, 114, 128, 0.22);
+  }
+
+  /* giscus 自己注入 iframe，给它一个干净的白底容器 */
+  .giscus, .giscus-frame { width: 100%; }
+
+  /* ── 弹幕 ───────────────────────────────── */
+  /* 弹幕压到最低层：负 z-index 让它落在所有内容之下，
+     只高过 body 背景（背景本身会上抛到画布，永远在最底） */
+  #danmaku {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    /* 左右两端渐隐，弹幕从虚空里浮出、再化回去，不会在边缘硬生生冒头 */
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  }
+
+  .dm {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+    font-size: clamp(13px, 1.45vw, 16px);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: var(--fg);
+    /* 用整体 opacity 而不是半透明字色：emoji 是彩色图，只调字色的话它们会亮得刺眼 */
+    opacity: 0.38;
+    will-change: transform, opacity;
+  }
+
+  .dm.accent { color: var(--accent); opacity: 0.46; }
+  .dm.mute   { opacity: 0.25; }
+
+  /* ── 背景音乐询问框 ─────────────────────── */
+  /* 页面内的对话框：默认就写在 HTML 里、由 CSS 显示，
+     JS 只负责「点了哪个」和放音，不用 confirm() */
+  .ask {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  .ask[hidden] { display: none; }
+
+  .ask-card {
+    width: 100%;
+    max-width: 340px;
+    padding: 30px 28px 24px;
+    text-align: center;
+    background: #fff;
+    border: 1px solid rgba(107, 114, 128, 0.16);
+    border-radius: 18px;
+    box-shadow: 0 18px 50px -20px rgba(22, 24, 29, 0.28);
+    animation: ask-in .28s cubic-bezier(.2, .8, .3, 1) both;
+  }
+
+  @keyframes ask-in {
+    from { opacity: 0; transform: translateY(10px) scale(.98); }
+  }
+
+  .ask-icon {
+    font-size: 44px;
+    line-height: 1;
+  }
+
+  .ask-title {
+    margin-top: 16px;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding-left: 0.06em;
+    color: var(--fg);
+  }
+
+  .ask-sub {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+  }
+
+  .ask-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .ask-btn {
+    flex: 1;
+    padding: 11px 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    padding-left: 0.1em;
+    color: var(--dim);
+    background: transparent;
+    border: 1px solid rgba(107, 114, 128, 0.28);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+  }
+
+  .ask-btn:hover {
+    color: var(--fg);
+    border-color: rgba(107, 114, 128, 0.5);
+  }
+
+  .ask-btn.primary {
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .ask-btn.primary:hover {
+    color: #fff;
+    background: #d9440f;
+    border-color: #d9440f;
+  }
+
+  .ask-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  /* ── 音乐开关 ───────────────────────────── */
+  /* 只在选了「听」之后才出现：说了不听的人不该再看到这颗按钮 */
+  .bgm-toggle {
+    position: fixed;
+    right: clamp(16px, 3vw, 28px);
+    bottom: clamp(16px, 3vw, 28px);
+    z-index: 5;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    line-height: 1;
+    background: #fff;
+    border: 1px solid rgba(107, 114, 128, 0.22);
+    border-radius: 999px;
+    box-shadow: 0 6px 18px -10px rgba(22, 24, 29, 0.35);
+    cursor: pointer;
+    transition: border-color .18s ease, transform .18s ease;
+  }
+
+  .bgm-toggle[hidden] { display: none; }
+
+  .bgm-toggle:hover {
+    border-color: rgba(242, 84, 29, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .bgm-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  /* 暂停时整颗按钮压暗，一眼看出当前是静的 */
+  .bgm-toggle[aria-pressed="false"] { opacity: 0.55; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+    .carousel img { transition: none; }
+    .ask-card { animation: none; }
+    .ask-btn { transition: none; }
+    .bgm-toggle { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="danmaku" aria-hidden="true"></div>
+
+<main class="hero">
+ <div class="stack">
+  <div class="carousel" id="carousel" aria-label="图片轮播" aria-roledescription="carousel">
+    <img src="img/slide-1.jpg" alt="编程猫编辑器合集：不要的编辑器免费换鸡蛋" class="on">
+    <img src="img/slide-2.jpg" alt="圆马鸡蛋" loading="lazy">
+    <img src="img/slide-3.jpg" alt="-100,000,000,000 Community Credit，Ban Time：现在" loading="lazy">
+    <img src="img/slide-4.jpg" alt="尚未孵化：李天驰" loading="lazy">
+  </div>
+
+  <h1>编程猫社区已经死多长时间了</h1>
+
+  <div class="timer" role="timer" aria-live="off">
+    <div class="days-row">
+      <span class="days-unit ghost" aria-hidden="true">天</span>
+      <span class="days" id="d">0</span>
+      <span class="days-unit">天</span>
+    </div>
+
+    <div class="clock">
+      <span class="seg"><b id="h">00</b><i>时</i></span>
+      <span class="seg"><b id="m">00</b><i>分</i></span>
+      <span class="seg"><b><span id="s">00</span><span class="ms" id="ms">.000</span></b><i>秒</i></span>
+    </div>
+  </div>
+
+  <p class="desc">
+    <span class="ln">自 <strong><time datetime="2026-06-23T16:58:00+08:00">2026年6月23日</time></strong> 起，编程猫社区成为了编程猫</span>
+    <span class="ln">我们常常调侃<span class="nb">「遥知社区摸鱼多、每逢佳节必封区」</span>，而事到如今，看着连<span class="nb">只读权限</span>都没有的社区，您又是如何感想？</span>
+    <span class="ln">释怀一切吧，它本身就不应该如此，或是出现</span>
+  </p>
+
+  <div class="actions">
+    <button class="btn" id="copy" type="button">复制当前时长</button>
+    <a class="btn"
+       href="https://codemao-guide.yuque.com/tni1ym/ni93hw/taer0r0b1dlqqk1p?singleDoc#"
+       target="_blank" rel="noopener noreferrer">看看官方公告</a>
+  </div>
+ </div>
+</main>
+
+<section class="comments">
+  <div class="comments-head">评论区</div>
+
+  <script src="https://giscus.app/client.js"
+          data-repo="Wangs-official/TodayCodemao"
+          data-repo-id="R_kgDOTkCbDg"
+          data-category="Announcements"
+          data-category-id="DIC_kwDOTkCbDs4DCA01"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="light"
+          data-lang="zh-CN"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section>
+
+<!-- 每次进入都问一遍，不记住选择 -->
+<div class="ask" id="ask" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+  <div class="ask-card">
+    <div class="ask-icon" aria-hidden="true">😭</div>
+    <p class="ask-title" id="ask-title">要听背景音乐吗</p>
+    <p class="ask-sub">释怀一切吧</p>
+    <div class="ask-btns">
+      <button class="ask-btn" id="ask-no" type="button">算了</button>
+      <button class="ask-btn primary" id="ask-yes" type="button" autofocus>听</button>
+    </div>
+  </div>
+</div>
+
+<button class="bgm-toggle" id="bgm-toggle" type="button"
+        hidden aria-pressed="true" aria-label="暂停背景音乐" title="暂停背景音乐">🔊</button>
+
+<audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
+
+<script>
+  // ══ 计时 ══════════════════════════════════
+  // 起始时间：2026-06-23 16:58:00（东八区），写死偏移量，任何时区打开结果一致
+  const START = new Date('2026-06-23T16:58:00+08:00').getTime();
+  const BASE_TITLE = '编程猫社区已经死多长时间了';
+
+  const el = {
+    d: document.getElementById('d'),
+    h: document.getElementById('h'),
+    m: document.getElementById('m'),
+    s: document.getElementById('s'),
+    ms: document.getElementById('ms'),
+  };
+
+  const pad = (n, len) => String(n).padStart(len, '0');
+
+  // 只在数值真正变化时写 DOM，避免每帧无谓的重排
+  const last = { d: null, h: null, m: null, s: null, ms: null };
+  let now = { d: 0, h: 0, m: 0, s: 0, ms: 0 };
+
+  function tick() {
+    let diff = Date.now() - START;
+    if (diff < 0) diff = 0;
+
+    const ms = diff % 1000;
+    const totalSec = Math.floor(diff / 1000);
+    const s = totalSec % 60;
+    const m = Math.floor(totalSec / 60) % 60;
+    const h = Math.floor(totalSec / 3600) % 24;
+    const d = Math.floor(totalSec / 86400);
+
+    now = { d, h, m, s, ms };
+
+    if (d !== last.d) { el.d.textContent = d; last.d = d; }
+    if (h !== last.h) { el.h.textContent = pad(h, 2); last.h = h; }
+    if (m !== last.m) { el.m.textContent = pad(m, 2); last.m = m; }
+    if (s !== last.s) {
+      el.s.textContent = pad(s, 2);
+      last.s = s;
+      // 标签页标题跟着秒数走（毫秒级更新标题会拖慢浏览器，按秒即可）
+      document.title = `${d}天 ${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)} · ${BASE_TITLE}`;
+    }
+    if (ms !== last.ms) { el.ms.textContent = '.' + pad(ms, 3); last.ms = ms; }
+
+    requestAnimationFrame(tick);
+  }
+
+  tick();
+
+  // ══ 复制当前时长 ══════════════════════════
+  const btn = document.getElementById('copy');
+  let resetTimer = null;
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-9999px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function flash(text) {
+    btn.textContent = text;
+    btn.classList.add('done');
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => {
+      btn.textContent = '复制当前时长';
+      btn.classList.remove('done');
+    }, 1800);
+  }
+
+  btn.addEventListener('click', () => {
+    const { d, h, m, s, ms } = now;
+    const text = `编程猫社区已经死了 ${d} 天 ${pad(h, 2)} 时 ${pad(m, 2)} 分 ${pad(s, 2)}.${pad(ms, 3)} 秒`
+      + `（自 2026-06-23 16:58 UTC+8 起）`;
+
+    // file:// 下 clipboard API 可能不可用，失败时回退到 execCommand
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => flash('已复制'))
+        .catch(() => flash(fallbackCopy(text) ? '已复制' : '复制失败'));
+    } else {
+      flash(fallbackCopy(text) ? '已复制' : '复制失败');
+    }
+  });
+
+  // ══ 轮播 ══════════════════════════════════
+  const slides = [...document.querySelectorAll('#carousel img')];
+  const SLIDE_MS = 3200;
+  let slideIdx = 0;
+
+  function show(i) {
+    slideIdx = (i + slides.length) % slides.length;
+    slides.forEach((s, n) => s.classList.toggle('on', n === slideIdx));
+  }
+
+  show(0);
+  setInterval(() => show(slideIdx + 1), SLIDE_MS);
+
+  // ══ 背景音乐 ══════════════════════════════
+  // 对话框本身是页面里的元素，这里只处理选择；
+  // 点按钮本身就是用户手势，能满足浏览器的自动播放限制
+  const ask = document.getElementById('ask');
+  const bgm = document.getElementById('bgm');
+  const toggle = document.getElementById('bgm-toggle');
+
+  function closeAsk() {
+    ask.hidden = true;
+  }
+
+  document.getElementById('ask-yes').addEventListener('click', () => {
+    const p = bgm.play();
+    if (p) p.catch(() => {});   // 浏览器仍然拒绝时静默放过，不弹二次提示
+    toggle.hidden = false;
+    closeAsk();
+  });
+
+  document.getElementById('ask-no').addEventListener('click', closeAsk);
+
+  toggle.addEventListener('click', () => {
+    if (bgm.paused) bgm.play().catch(() => {});
+    else bgm.pause();
+  });
+
+  // 按钮外观跟着音频的真实状态走，而不是跟着点击次数猜
+  const syncToggle = () => {
+    const on = !bgm.paused;
+    toggle.textContent = on ? '🔊' : '🔇';
+    toggle.setAttribute('aria-pressed', String(on));
+    const label = on ? '暂停背景音乐' : '播放背景音乐';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+  };
+
+  bgm.addEventListener('play', syncToggle);
+  bgm.addEventListener('pause', syncToggle);
+
+  // ══ 弹幕 ══════════════════════════════════
+  const LINES = [
+    '亲爱的训练师们 🥺👉👈',
+    '感谢大家一直以来对编程猫社区的支持与陪伴 🙏✨',
+    '为了持续维护更安全更健康更清朗的社区环境保障大家的创作浏览与交流体验 🌈🕊️',
+    '我们将于2026年6月23日起对社区进行一次内容安全专项升级 🔧😇',
+    '升级期间社区部分功能将临时暂停访问或展示恢复时间将根据升级进度另行通知 ⏳🙂',
+    '本次调整启动较为紧急给大家带来的不便我们非常抱歉 😅🙇',
+    '社区承载了许多训练师的作品帖子评论和互动内容 📦💭',
+    '随着内容数量不断增加我们也需要用更严格更细致的方式对历史内容和安全机制进行全面检查与优化 🔍🧹',
+    '这是一项必须尽快推进的工作也是为了让社区能够更稳定更安心地陪伴大家继续创作 🚀🫠',
+    '本次升级将重点围绕以下方向进行 📋👇',
+    '对社区历史存量内容进行集中排查与清理 🗑️💀',
+    '优化内容审核机制提升对违规诱导类内容的识别和处理能力 🤖👀',
+    '升级社区安全策略与未成年人保护相关机制 🛡️👶',
+    '我们理解社区相关功能的临时调整会影响大家浏览作品发现内容和参与社区互动的节奏 🎵😐',
+    '也正因为社区对大家很重要我们才更希望认真完成这次升级把可能存在的问题处理得更细更稳一些 💗🤡',
+    '让我们一起守护更安全更清爽更适合创作的编程猫社区 🤝🌱',
+    '在升级期间如果您发现任何可疑内容或遇到问题欢迎通过以下方式联系我们 📮🫥',
+  ];
+
+  const stage = document.getElementById('danmaku');
+  const LANE_H = 36;          // 轨道行高
+  const SPAWN_MS = 850;       // 发射间隔
+  const DUR = [15000, 22000]; // 单条飞完全程的耗时区间
+  const TAIL = 90;            // 同轨道两条之间的最小尾距(px)
+
+  let lanes = [];             // lanes[i] = 该轨道下一次可用的时间戳
+  let cursor = 0;             // 文案游标 —— 走到末尾回到开头，无限循环
+  let maxLive = 0;            // 同屏上限
+
+  function measure() {
+    const count = Math.max(3, Math.floor(window.innerHeight / LANE_H) - 1);
+    const next = new Array(count).fill(0);
+    // 保留已有轨道的占用状态，避免 resize 时挤在一起
+    for (let i = 0; i < Math.min(count, lanes.length); i++) next[i] = lanes[i];
+    lanes = next;
+
+    // 密度按屏幕面积算：窄屏上每条弹幕都横贯整屏，铺满轨道会把主体埋掉
+    const area = window.innerWidth * window.innerHeight;
+    maxLive = Math.max(4, Math.min(18, Math.round(area / 42000)));
+  }
+
+  measure();
+  window.addEventListener('resize', measure);
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  function spawn(primed) {
+    if (stage.childElementCount >= maxLive) return;
+
+    const t = performance.now();
+
+    // 找一条空闲轨道；顺序打乱，避免总是从顶上开始铺
+    const order = lanes.map((_, i) => i).sort(() => Math.random() - 0.5);
+    const lane = order.find((i) => lanes[i] <= t);
+    if (lane === undefined) return;
+
+    const node = document.createElement('span');
+    node.className = 'dm';
+    const roll = Math.random();
+    if (roll < 0.22) node.classList.add('accent');
+    else if (roll < 0.5) node.classList.add('mute');
+    node.textContent = LINES[cursor];
+    cursor = (cursor + 1) % LINES.length;   // 循环取文案
+
+    node.style.top = (lane * LANE_H + 6) + 'px';
+    stage.appendChild(node);
+
+    const vw = window.innerWidth;
+    const w = node.offsetWidth;
+    const duration = rand(DUR[0], DUR[1]) * (1 + w / (vw * 4)); // 长句稍慢，观感速度一致
+
+    const anim = node.animate(
+      [{ transform: `translateX(${vw}px)` }, { transform: 'translateX(-100%)' }],
+      { duration, easing: 'linear', fill: 'forwards' }
+    );
+
+    // 首屏预热：让最初几条从半途开始，打开页面就是满屏而不是空场
+    if (primed) anim.currentTime = Math.random() * duration * 0.75;
+
+    // 车尾完全离开右边缘后，本轨道才允许下一条
+    const speed = (vw + w) / duration;
+    lanes[lane] = t + (w + TAIL) / speed - (primed ? anim.currentTime : 0);
+
+    anim.onfinish = () => node.remove();
+  }
+
+  for (let i = 0; i < maxLive; i++) spawn(true);
+  setInterval(() => spawn(false), SPAWN_MS);
+</script>
+
+</body>
+</html>
