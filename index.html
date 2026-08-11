@@ -600,9 +600,9 @@
   }
 
   btn.addEventListener('click', () => {
-    const { d, h, m, s, ms } = now;
-    const text = `编程猫社区已经死了 ${d} 天 ${pad(h, 2)} 时 ${pad(m, 2)} 分 ${pad(s, 2)}.${pad(ms, 3)} 秒`
-      + `（自 2026-06-23 16:58 UTC+8 起）`;
+    const { d, h, m, s } = now;
+    const text = `编程猫社区已经死了 ${d} 天 ${pad(h, 2)} 时 ${pad(m, 2)} 分 ${pad(s, 2)} 秒（自 2026-06-23 16:58 起）\n`
+      + `也想知道编程猫死了多久？访问：https://gg.hachimlab.top`;
 
     // file:// 下 clipboard API 可能不可用，失败时回退到 execCommand
     if (navigator.clipboard && window.isSecureContext) {
