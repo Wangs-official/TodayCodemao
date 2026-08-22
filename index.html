@@ -394,13 +394,19 @@
     outline-offset: 3px;
   }
 
-  /* ── 音乐开关 ───────────────────────────── */
-  /* 只在选了「听」之后才出现：说了不听的人不该再看到这颗按钮 */
-  .bgm-toggle {
+  /* ── 右下角按钮组 ───────────────────────── */
+  /* 竖排、从下往上摞：音乐按钮没露面时，烟花按钮自己落到角上，不会空一格 */
+  .dock {
     position: fixed;
     right: clamp(16px, 3vw, 28px);
     bottom: clamp(16px, 3vw, 28px);
     z-index: 5;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .dock-btn {
     width: 42px;
     height: 42px;
     display: flex;
@@ -416,33 +422,199 @@
     transition: border-color .18s ease, transform .18s ease;
   }
 
-  .bgm-toggle[hidden] { display: none; }
+  /* 音乐按钮只在选了「听」之后才出现：说了不听的人不该再看到它 */
+  .dock-btn[hidden] { display: none; }
 
-  .bgm-toggle:hover {
+  .dock-btn:hover {
     border-color: rgba(242, 84, 29, 0.5);
     transform: translateY(-1px);
   }
 
-  .bgm-toggle:focus-visible {
+  .dock-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
   }
 
-  /* 暂停时整颗按钮压暗，一眼看出当前是静的 */
-  .bgm-toggle[aria-pressed="false"] { opacity: 0.55; }
+  /* 关掉时整颗按钮压暗，一眼看出当前是静的 / 没烟花 */
+  .dock-btn[aria-pressed="false"] { opacity: 0.55; }
+
+  /* ── 顶部横幅 ───────────────────────────── */
+  /* 整条都可点：横幅本身就是按钮，不用再在里面塞一个链接 */
+  .banner {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    padding: 11px clamp(20px, 5vw, 40px);
+    font-family: inherit;
+    font-size: clamp(0.72rem, 2.1vw, 0.84rem);
+    line-height: 1.6;
+    letter-spacing: 0.08em;
+    /* 字距在末字右侧留白，补一半让整行真正居中 */
+    padding-left: calc(clamp(20px, 5vw, 40px) + 0.08em);
+    color: var(--accent);
+    text-align: center;
+    background: rgba(242, 84, 29, 0.07);
+    border: 0;
+    border-bottom: 1px solid rgba(242, 84, 29, 0.16);
+    cursor: pointer;
+    transition: background-color .18s ease;
+  }
+
+  .banner:hover { background: rgba(242, 84, 29, 0.12); }
+
+  .banner:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
+  }
+
+  .banner .banner-emoji { margin-right: 0.4em; }
+
+  /* 箭头跟着 hover 往右挪一点，暗示"这里能点开" */
+  .banner .banner-arrow {
+    display: inline-block;
+    margin-left: 0.3em;
+    transition: transform .18s ease;
+  }
+
+  .banner:hover .banner-arrow { transform: translateX(3px); }
+
+  /* ── 贺词弹窗 ───────────────────────────── */
+  /* 复用询问框那套视觉，只是内容更长、需要能滚 */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(16px, 4vw, 32px);
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  .modal[hidden] { display: none; }
+
+  .modal-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 560px;
+    max-height: min(80vh, 640px);
+    background: #fff;
+    border: 1px solid rgba(107, 114, 128, 0.16);
+    border-radius: 18px;
+    box-shadow: 0 18px 50px -20px rgba(22, 24, 29, 0.28);
+    animation: ask-in .28s cubic-bezier(.2, .8, .3, 1) both;
+    overflow: hidden;
+  }
+
+  .modal-head {
+    flex: none;
+    padding: 24px 28px 14px;
+    text-align: center;
+  }
+
+  .modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding-left: 0.08em;
+    color: var(--fg);
+  }
+
+  /* 正文单独滚动，标题和关闭按钮始终留在视野里 */
+  .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px clamp(22px, 5vw, 30px) 8px;
+    font-size: clamp(0.8rem, 2.2vw, 0.9rem);
+    line-height: 2;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+    line-break: strict;
+    text-wrap: pretty;
+  }
+
+  .modal-body .modal-img {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+    margin: 6px auto 20px;
+    border-radius: 14px;
+    background: #f4f5f7;
+  }
+
+  .modal-body p + p { margin-top: 1.1em; }
+  .modal-body strong { color: var(--fg); font-weight: 500; }
+  .modal-body .quo { color: var(--accent); }
+
+  .modal-foot {
+    flex: none;
+    padding: 16px clamp(22px, 5vw, 30px) 24px;
+  }
+
+  .modal-close {
+    width: 100%;
+    padding: 11px 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    padding-left: 0.1em;
+    color: #fff;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease;
+  }
+
+  .modal-close:hover { background: #d9440f; border-color: #d9440f; }
+
+  .modal-close:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  /* ── 烟花 ───────────────────────────────── */
+  /* 盖在所有内容之上（弹窗也在下面），但不吃任何点击 */
+  #fireworks {
+    position: fixed;
+    inset: 0;
+    /* canvas 是替换元素：光给 inset 不给尺寸的话，contain 里的 size 会把它压成
+       0×0，画什么都看不见。宽高必须显式写死 */
+    width: 100%;
+    height: 100%;
+    z-index: 30;
+    pointer-events: none;
+  }
+
+  #fireworks[hidden] { display: none; }
 
   @media (prefers-reduced-motion: reduce) {
     .btn { transition: none; }
     .carousel img { transition: none; }
     .ask-card { animation: none; }
     .ask-btn { transition: none; }
-    .bgm-toggle { transition: none; }
+    .dock-btn { transition: none; }
+    .banner, .banner .banner-arrow { transition: none; }
+    .modal-card { animation: none; }
+    .modal-close { transition: none; }
   }
 </style>
 </head>
 <body>
 
 <div id="danmaku" aria-hidden="true"></div>
+<canvas id="fireworks" aria-hidden="true" hidden></canvas>
+
+<button class="banner" id="banner" type="button" aria-haspopup="dialog">
+  <span class="banner-emoji" aria-hidden="true">🎉</span>编程猫社区关停60天纪念贺词，点击查看<span class="banner-arrow" aria-hidden="true">→</span>
+</button>
 
 <main class="hero">
  <div class="stack">
@@ -505,6 +677,28 @@
   </script>
 </section>
 
+<!-- 贺词：默认隐藏，点横幅才打开 -->
+<div class="modal" id="greet" role="dialog" aria-modal="true" aria-labelledby="greet-title" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <p class="modal-title" id="greet-title">编程猫社区关停 60 天纪念贺词</p>
+    </div>
+
+    <div class="modal-body" tabindex="0">
+      <img class="modal-img" src="img/greeting.jpg"
+           alt="庆祝编程猫社区关停 60 天：金色的 60 立在舞台上，编程猫举着一块打叉的牌子"
+           width="1280" height="1280" loading="lazy" decoding="async">
+      <p>值此编程猫社区关停 60 天杳无音讯之际，谨致以最<span class="quo">「热烈」</span>的祝贺：</p>
+      <p>祝编程猫社区及点猫科技蒸蒸日上，继续深耕 ToB 产品一百年不动摇；继续在用户最需要的时候美美隐身，任凭普通用户呼声再高，我自岿然不动、稳如泰山。愿贵司在<span class="quo">「用户沟通」</span>这门艺术上持续精进，把<span class="quo">「已读不回」</span>发扬光大，让每一位普通用户都能在漫长等待中学会独立、学会成长、学会不再期待。</p>
+      <p>再次衷心祝贺，期待贵司在<span class="quo">「沉默是金」</span>的道路上越走越远，再创辉煌！</p>
+    </div>
+
+    <div class="modal-foot">
+      <button class="modal-close" id="greet-close" type="button">收下这份祝福</button>
+    </div>
+  </div>
+</div>
+
 <!-- 每次进入都问一遍，不记住选择 -->
 <div class="ask" id="ask" role="dialog" aria-modal="true" aria-labelledby="ask-title">
   <div class="ask-card">
@@ -518,8 +712,13 @@
   </div>
 </div>
 
-<button class="bgm-toggle" id="bgm-toggle" type="button"
-        hidden aria-pressed="true" aria-label="暂停背景音乐" title="暂停背景音乐">🔊</button>
+<div class="dock">
+  <!-- 顺序反着写：column-reverse 下第一个落在最底下，音乐按钮保持在原来的角上 -->
+  <button class="dock-btn" id="bgm-toggle" type="button"
+          hidden aria-pressed="true" aria-label="暂停背景音乐" title="暂停背景音乐">🔊</button>
+  <button class="dock-btn" id="fw-toggle" type="button"
+          aria-pressed="false" aria-label="开启烟花" title="开启烟花">🔥</button>
+</div>
 
 <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
 
@@ -665,6 +864,34 @@
   bgm.addEventListener('play', syncToggle);
   bgm.addEventListener('pause', syncToggle);
 
+  // ══ 贺词弹窗 ══════════════════════════════
+  const banner = document.getElementById('banner');
+  const greet = document.getElementById('greet');
+  const greetClose = document.getElementById('greet-close');
+
+  function openGreet() {
+    greet.hidden = false;
+    greetClose.focus();
+    fwVolley();   // 纪念日才会真的响，平日里这句是空转
+  }
+
+  function closeGreet() {
+    greet.hidden = true;
+    banner.focus();   // 焦点还回横幅，键盘用户不会掉到页面开头
+  }
+
+  banner.addEventListener('click', openGreet);
+  greetClose.addEventListener('click', closeGreet);
+
+  // 点卡片外的遮罩也算关闭
+  greet.addEventListener('click', (e) => {
+    if (e.target === greet) closeGreet();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !greet.hidden) closeGreet();
+  });
+
   // ══ 弹幕 ══════════════════════════════════
   const LINES = [
     '亲爱的训练师们 🥺👉👈',
@@ -755,6 +982,225 @@
 
   for (let i = 0; i < maxLive; i++) spawn(true);
   setInterval(() => spawn(false), SPAWN_MS);
+
+  // ══ 烟花 ══════════════════════════════════
+  // 只有整十天的纪念日才放。天数取计时器同一套口径 ——
+  // 自 START 起算的整天数，所以每天的换日点是 16:58 而不是零点
+  const FW_DAYS = [60, 90];
+  const FW_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const isFwDay = () => FW_DAYS.includes(Math.floor(Math.max(0, Date.now() - START) / 86400000));
+
+  const fw = document.getElementById('fireworks');
+  const fx = fw.getContext('2d');
+
+  const FW_COLORS = ['#f2541d', '#ffb020', '#e0245e', '#3b82f6', '#22c55e', '#a855f7', '#06b6d4'];
+  const GRAVITY = 0.045;
+  const RISE = GRAVITY * 2.2;   // 升空段的减速度，比自由落体重，弹体才不会飘
+  const DRAG = 0.981;
+  const MAX_PARTS = 2600;       // 上限兜底，防止连发时堆积
+
+  let fwW = 0, fwH = 0;
+  let parts = [];               // 爆开后的火星
+  let rockets = [];             // 升空中的弹体
+  let fwRunning = false;
+  let fwFrame = 0;              // 持有当前帧号，关的时候好取消
+
+  function fwResize() {
+    // DPR 压到 2：视网膜屏上再高也看不出差别，只是白烧填充率
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    fwW = window.innerWidth;
+    fwH = window.innerHeight;
+    fw.width = Math.round(fwW * dpr);
+    fw.height = Math.round(fwH * dpr);
+    fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function burst(x, y, color, scale) {
+    const s = scale || 1;
+    // 爆开的力度跟着视口尺寸走，大屏上才撑得开、不会缩成一小撮
+    const reach = (Math.min(fwW, fwH) / 240) * s;
+    const count = Math.round((70 + Math.random() * 44) * s);
+    const power = (2.5 + Math.random() * 1.5) * reach;
+
+    for (let i = 0; i < count && parts.length < MAX_PARTS; i++) {
+      // 均分角度再加一点抖动：完全随机会结块，完全均分又太像齿轮
+      const a = (Math.PI * 2 * i) / count + rand(-0.1, 0.1);
+      // 开方让速度偏向外圈：均匀取值的话火星会挤在球心
+      const v = power * Math.sqrt(rand(0.12, 1));
+      parts.push({
+        x, y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        r: rand(1.5, 3),
+        life: 1,
+        decay: rand(0.006, 0.013),
+        color,
+      });
+    }
+    fwStart();
+  }
+
+  function launch(x, targetY) {
+    // salvo 是错开时间发的，中途关掉的话后面几发得吃掉；
+    // 后台标签页 rAF 是停的，照发只会把弹体堆着、切回来一起炸
+    if (!fwOn || document.hidden) return;
+    const sx = x === undefined ? rand(fwW * 0.07, fwW * 0.93) : x;
+    const ty = targetY === undefined ? rand(fwH * 0.08, fwH * 0.62) : targetY;
+    rockets.push({
+      x: sx,
+      y: fwH + 8,
+      vx: rand(-0.5, 0.5),
+      // 按抛体公式反推初速，保证一定升得到目标高度，不会半途熄火
+      vy: -Math.sqrt(2 * RISE * Math.max(40, fwH - ty)) * rand(1, 1.06),
+      ty,
+      color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+    });
+    fwStart();
+  }
+
+  // 一排同时炸开，横向铺满整屏
+  function salvo(n, scale) {
+    for (let i = 0; i < n; i++) {
+      const x = fwW * ((i + rand(0.25, 0.75)) / n);
+      setTimeout(() => launch(x, rand(fwH * 0.1, fwH * 0.58)), i * rand(70, 150));
+    }
+  }
+
+  // 开关：日子只决定初值，用户点过按钮之后就完全听按钮的
+  const fwToggle = document.getElementById('fw-toggle');
+  let fwOn = false;
+  let fwManual = false;
+
+  function setFw(on) {
+    if (on === fwOn) return;
+    fwOn = on;
+    fw.hidden = !on;
+    fwToggle.setAttribute('aria-pressed', String(on));
+    const label = on ? '关闭烟花' : '开启烟花';
+    fwToggle.setAttribute('aria-label', label);
+    fwToggle.title = label;
+    if (!on) fwStop();
+  }
+
+  fwToggle.addEventListener('click', () => {
+    fwManual = true;
+    setFw(!fwOn);
+    if (fwOn) salvo(4);   // 点开就先来一排，别让人对着空屏幕等
+  });
+
+  function fwLoop() {
+    // 用 destination-out 擦而不是铺白底：画布始终透明，页面内容不会被盖住，
+    // 又能留下一截拖尾
+    fx.globalCompositeOperation = 'destination-out';
+    fx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    fx.fillRect(0, 0, fwW, fwH);
+    fx.globalCompositeOperation = 'source-over';
+
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.x += r.vx;
+      r.y += r.vy;
+      r.vy += RISE;
+
+      fx.globalAlpha = 0.9;
+      fx.fillStyle = r.color;
+      fx.beginPath();
+      fx.arc(r.x, r.y, 2, 0, Math.PI * 2);
+      fx.fill();
+
+      // 到顶或者已经飞不动了就炸
+      if (r.y <= r.ty || r.vy >= 0) {
+        burst(r.x, r.y, r.color);
+        rockets.splice(i, 1);
+      }
+    }
+
+    // 满屏两千多颗火星，逐颗 fill 会把帧时间吃光。
+    // 按「颜色 + 透明度档位」归堆，一堆一次 fill —— 调用数从上千掉到几十
+    const buckets = new Map();
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i];
+      p.vx *= DRAG;
+      p.vy = p.vy * DRAG + GRAVITY;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+
+      if (p.life <= 0 || p.y > fwH + 60) { parts.splice(i, 1); continue; }
+
+      const step = Math.max(1, Math.round(p.life * 10));
+      const key = p.color + step;
+      let b = buckets.get(key);
+      if (!b) { b = { color: p.color, alpha: step / 10, list: [] }; buckets.set(key, b); }
+      b.list.push(p);
+    }
+
+    buckets.forEach((b) => {
+      fx.globalAlpha = b.alpha;
+      fx.fillStyle = b.color;
+      fx.beginPath();
+      for (const p of b.list) {
+        fx.moveTo(p.x + p.r * p.life, p.y);
+        fx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      }
+      fx.fill();
+    });
+
+    fx.globalAlpha = 1;
+
+    // 场上空了就停掉 rAF，别让空转的循环一直跟着页面跑
+    if (!parts.length && !rockets.length) {
+      fwStop();
+      return;
+    }
+
+    fwFrame = requestAnimationFrame(fwLoop);
+  }
+
+  function fwStart() {
+    if (fwRunning) return;
+    fwRunning = true;
+    fwFrame = requestAnimationFrame(fwLoop);
+  }
+
+  // 停车不靠循环自己走到空场，而是直接掐掉这一帧：
+  // 循环没被调度到的时候（关掉、标签页切走）状态也不会卡住
+  function fwStop() {
+    if (fwFrame) cancelAnimationFrame(fwFrame);
+    fwFrame = 0;
+    fwRunning = false;
+    parts = [];
+    rockets = [];
+    fx.clearRect(0, 0, fwW, fwH);
+  }
+
+  // 开弹窗时的一轮齐射：横向排开六发，外加正中一发大的
+  function fwVolley() {
+    salvo(6);
+    setTimeout(() => launch(fwW * rand(0.44, 0.56), fwH * 0.12), 620);
+  }
+
+  fwResize();
+  window.addEventListener('resize', fwResize);
+  setFw(!FW_REDUCED && isFwDay());
+
+  // 连着放，间隔随机
+  (function schedule() {
+    setTimeout(() => {
+      // 没人碰过按钮的话，日子说了算 —— 页面挂着跨过 16:58 会自然停
+      if (!fwManual) setFw(!FW_REDUCED && isFwDay());
+      if (fwOn) {
+        launch();
+        // 三分之一的概率补一发，节奏才不会像节拍器一样规整
+        if (Math.random() < 0.34) setTimeout(launch, rand(120, 320));
+      }
+      schedule();
+    }, rand(520, 1150));
+  })();
+
+  setTimeout(() => salvo(5), 500);   // 进页面先来一排，别让人等
+
 </script>
 
 </body>
