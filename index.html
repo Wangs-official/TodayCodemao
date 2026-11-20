@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>编程猫社区已经死多长时间了</title>
+<title>编程猫社区已经恢复（半瘫）多长时间了</title>
 <link rel="icon" href="https://hachimlab.top/favicon.ico">
 <style>
   :root {
@@ -182,6 +182,7 @@
   }
 
   /* 每句自成一段，段间留一点呼吸；句内放不下才换行 */
+  .desc[hidden] { display: none; }
   .desc .ln { display: block; }
   .desc .ln + .ln { margin-top: 0.7em; }
   .desc .nb { white-space: nowrap; }
@@ -194,6 +195,51 @@
     gap: 12px;
     margin-top: var(--gap-block);
   }
+
+  /* ── 计时起点切换 ───────────────────────── */
+  /* 一颗药丸里两个选项，选中的那半填强调色 */
+  .mode {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--gap-block);
+  }
+
+  .mode-group {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid rgba(107, 114, 128, 0.28);
+    border-radius: 999px;
+  }
+
+  .mode-opt {
+    padding: 6px 18px;
+    padding-left: calc(18px + 0.1em);
+    font-family: inherit;
+    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: var(--dim);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .18s ease, background-color .18s ease;
+  }
+
+  .mode-opt:hover { color: var(--accent); }
+
+  .mode-opt[aria-checked="true"] {
+    color: #fff;
+    background: var(--accent);
+  }
+
+  .mode-opt:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* 切换器和下面两颗按钮是一组，间距收紧 */
+  .mode + .actions { margin-top: 14px; }
 
   .btn {
     display: inline-flex;
@@ -315,7 +361,7 @@
 
   .ask-card {
     width: 100%;
-    max-width: 340px;
+    max-width: 380px;
     padding: 30px 28px 24px;
     text-align: center;
     background: #fff;
@@ -350,6 +396,8 @@
     letter-spacing: 0.04em;
     color: var(--dim);
   }
+
+  .ask-song { color: var(--accent); white-space: nowrap; }
 
   .ask-btns {
     display: flex;
@@ -595,11 +643,109 @@
 
   #fireworks[hidden] { display: none; }
 
+  /* ── 特效歌词舞台 ───────────────────────── */
+  /* 和轮播共用同一块位置：.media 只负责占住轮播那么高的空间，
+     轮播和歌词舞台都绝对定位叠在里面，放歌时交叉淡入淡出。
+     整套动效只动 transform / opacity，全部走合成层，不触发重排 */
+  .media {
+    position: relative;
+    height: clamp(150px, min(38vw, 22vh), 210px);
+    margin: 0 auto clamp(24px, 3.4vh, 34px);
+    /* 放歌时收成两排歌词那么高，下面的标题和计时跟着往上提。
+       只在开/停时过渡一次，不是逐帧的开销 */
+    transition: height .5s cubic-bezier(.2, .8, .3, 1), margin-bottom .5s cubic-bezier(.2, .8, .3, 1);
+  }
+
+  .media.singing {
+    height: clamp(64px, 9vh, 84px);
+    margin-bottom: clamp(14px, 2vh, 20px);
+  }
+
+  .media .carousel {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    margin: 0;
+    transform: translateX(-50%);
+    transform-origin: 50% 0;
+    transition: opacity .35s ease, transform .5s cubic-bezier(.2, .8, .3, 1);
+  }
+
+  /* 往上缩着淡出，不会在收高的过程中压到下面的标题 */
+  .media.singing .carousel {
+    opacity: 0;
+    transform: translateX(-50%) scale(.4);
+    pointer-events: none;
+  }
+
+  /* 无底：不画卡片，歌词直接浮在页面上 */
+  .stage {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: min(100%, 480px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    opacity: 0;
+    transform: translateX(-50%) scale(1.04);
+    transition: opacity .6s ease, transform .6s cubic-bezier(.2, .8, .3, 1);
+    pointer-events: none;
+    contain: layout style size;
+  }
+
+  /* 歌词无底，放歌时把弹幕压淡一些，别和歌词抢 */
+  #danmaku { transition: opacity .6s ease; }
+  body.singing #danmaku { opacity: 0.4; }
+
+  .media.singing .stage {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  /* 两排错落：上排靠左、下排靠右，两句交替着唱 */
+  .ly-row {
+    font-size: clamp(0.88rem, 3vw, 1.08rem);
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    color: #b3b9c3;
+    opacity: 0.5;
+    transition: opacity .45s ease;
+  }
+
+  .ly-row.r0 { text-align: left;  padding-right: 8%; }
+  .ly-row.r1 { text-align: right; padding-left: 8%; }
+
+  /* 正在唱的那排整排提亮，候场的那排压暗 */
+  .ly-row.active { opacity: 1; }
+
+  /* 每个字：没唱到时缩小、发灰；唱到时放大、变橙、带一点光。
+     大小用 font-size 而不是 scale：scale 不占位，缩小的字之间会空出一道道缝。
+     改字号会让这一行重新排版，但舞台用 contain 圈住了，只重排这一小块，开销很小 */
+  .ly-row .ch {
+    display: inline-block;
+    white-space: pre;
+    font-size: 0.8em;
+    /* 白色描边似的光晕：无底时压住背后飘过的弹幕和烟花 */
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+    transition: font-size .32s cubic-bezier(.2, .9, .3, 1.2), color .3s ease, text-shadow .3s ease;
+  }
+
+  .ly-row .ch.lit {
+    font-size: 1em;
+    color: var(--accent);
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 16px rgba(242, 84, 29, 0.35);
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .btn { transition: none; }
+    .btn, .mode-opt { transition: none; }
     .carousel img { transition: none; }
     .ask-card { animation: none; }
     .ask-btn { transition: none; }
+    .media, .media .carousel, .stage, .ly-row, .ly-row .ch { transition: none; }
     .dock-btn { transition: none; }
     .banner, .banner .banner-arrow { transition: none; }
     .modal-card { animation: none; }
@@ -612,12 +758,17 @@
 <div id="danmaku" aria-hidden="true"></div>
 <canvas id="fireworks" aria-hidden="true" hidden></canvas>
 
-<button class="banner" id="banner" type="button" aria-haspopup="dialog">
+<button class="banner" id="banner-150" type="button" aria-haspopup="dialog" data-modal="greet-150">
+  <span class="banner-emoji" aria-hidden="true">💐</span>你有全面封锁，我有平地起惊雷！编程猫社区漫长维护路终于画下句点...吗？点击查看社区半开放贺词<span class="banner-arrow" aria-hidden="true">→</span>
+</button>
+
+<button class="banner" id="banner" type="button" aria-haspopup="dialog" data-modal="greet">
   <span class="banner-emoji" aria-hidden="true">🎉</span>编程猫社区关停60天纪念贺词，点击查看<span class="banner-arrow" aria-hidden="true">→</span>
 </button>
 
 <main class="hero">
  <div class="stack">
+  <div class="media" id="media">
   <div class="carousel" id="carousel" aria-label="图片轮播" aria-roledescription="carousel">
     <img src="img/slide-1.jpg" alt="编程猫编辑器合集：不要的编辑器免费换鸡蛋" class="on">
     <img src="img/slide-2.jpg" alt="圆马鸡蛋" loading="lazy">
@@ -625,7 +776,14 @@
     <img src="img/slide-4.jpg" alt="尚未孵化：李天驰" loading="lazy">
   </div>
 
-  <h1>编程猫社区已经死多长时间了</h1>
+  <!-- 放歌时取代轮播的歌词舞台 -->
+  <div class="stage" id="stage" aria-hidden="true">
+    <div class="ly-row r0" id="ly-r0"></div>
+    <div class="ly-row r1" id="ly-r1"></div>
+  </div>
+  </div>
+
+  <h1 id="headline">编程猫社区已经恢复（半瘫）多长时间了</h1>
 
   <div class="timer" role="timer" aria-live="off">
     <div class="days-row">
@@ -641,16 +799,31 @@
     </div>
   </div>
 
-  <p class="desc">
+  <!-- 两段描述跟着计时起点切换，同一时刻只露一段 -->
+  <p class="desc" data-desc="half">
+    <span class="ln">你有全面封锁，我有平地起惊雷</span>
+    <span class="ln">自 <strong><time datetime="2026-11-20T23:00:00+08:00">2026年11月20日</time></strong> 起，编程猫社区恢复了作品浏览以及发现页的查看，论坛仍未开放</span>
+    <span class="ln">我们常常调侃<span class="nb">「遥知社区摸鱼多、每逢佳节必封区」</span>，而事到如今，也只能看看作品了，好吧，我们都应该学会知足</span>
+    <span class="ln">至少编程猫社区还没有被忘记，但马上就要成为时代的眼泪了</span>
+  </p>
+
+  <p class="desc" data-desc="dead" hidden>
     <span class="ln">自 <strong><time datetime="2026-06-23T16:58:00+08:00">2026年6月23日</time></strong> 起，编程猫社区成为了编程猫</span>
     <span class="ln">我们常常调侃<span class="nb">「遥知社区摸鱼多、每逢佳节必封区」</span>，而事到如今，看着连<span class="nb">只读权限</span>都没有的社区，您又是如何感想？</span>
     <span class="ln">释怀一切吧，它本身就不应该如此，或是出现</span>
   </p>
 
+  <div class="mode">
+    <div class="mode-group" role="radiogroup" aria-label="计时起点">
+      <button class="mode-opt" type="button" role="radio" aria-checked="true" data-mode="half">半瘫</button>
+      <button class="mode-opt" type="button" role="radio" aria-checked="false" data-mode="dead">全死</button>
+    </div>
+  </div>
+
   <div class="actions">
     <button class="btn" id="copy" type="button">复制当前时长</button>
     <a class="btn"
-       href="https://codemao-guide.yuque.com/tni1ym/ni93hw/taer0r0b1dlqqk1p?singleDoc#"
+       href="https://shequ.codemao.cn/static/community-announcement.html"
        target="_blank" rel="noopener noreferrer">看看官方公告</a>
   </div>
  </div>
@@ -699,12 +872,31 @@
   </div>
 </div>
 
+<div class="modal" id="greet-150" role="dialog" aria-modal="true" aria-labelledby="greet-150-title" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <p class="modal-title" id="greet-150-title">编程猫社区半开放贺词</p>
+    </div>
+
+    <div class="modal-body" tabindex="0">
+      <p>谨以最复杂的心情，祝贺编程猫社区在历经一百五十天零六小时的漫长<span class="quo">“蜕变”</span>之后，终于交出了一份令人唏嘘的答卷——凭借一番轰轰烈烈的抢救，硬生生将那个早已生机断绝的<span class="quo">“死人社区”</span>，从彻底沉寂的边缘拉了回来，体面地维持在了如今这副<span class="quo">“半瘫痪社区”</span>的模样。五个月的翘首以盼，换来的不是枯木逢春的重生，而是一场靠着呼吸机勉强续命的奇迹，实在让人在鼓掌喝彩之余，生出几分物是人非的怅惘。</p>
+      <p>遥想公瑾当年，这里的日活浩如烟海、烟火气十足，每一行代码背后都涌动着少年人的热忱与鲜活。那时的社区固然漏洞百出，却也正因这份不设防的野蛮生长，成就了一段难以复刻的江湖传说——它不仅是无数孩子推开编程世界大门的启蒙地，更阴差阳错地成了<span class="quo">“少儿的第一个靶场”</span>，在跌跌撞撞与奇思妙想中，盛放过整整一代人的意气风发。可如今五个月弹指而过，在经历了一场近乎刮骨疗毒般的闭关后，编程猫社区确实如愿<span class="quo">“进化”</span>了：审核变得前所未有的严格，后端也肉眼可见地得到了增强。只是这份看似铜墙铁壁的<span class="quo">“超强”</span>背后，却偏偏把当年最动人的生命力与少年锐气一并清洗殆尽。曾经那个热闹滚烫的少儿编程圣地，如今只剩下一具规矩、安全、却再无灵魂的冰冷躯壳，叫人怎能不发一声长叹？</p>
+      <p>事已至此，倒也不必再度八载光阴了，今朝即是登顶之时——毕竟，能把昔日鲜活的辉煌亲手送进半瘫痪的荣光里，本身也算是一种难以逾越的巅峰。真可谓：<strong>天不生我编程猫社区，少儿编程社区万古如长夜。</strong>只是这漫漫长夜里，如今亮着的究竟是引领未来的火把，还是祭奠旧时代的烛火，恐怕也只有一路陪伴走来的老用户心里最清楚了。</p>
+      <p>临末，唯愿编程猫社区就此<span class="quo">“蒸蒸日上”</span>。愿它带着这份用人气换来的宁静与体面，继续在那座巍峨壮观的屎山之上潜心重构代码；也愿它在彻底告别往日的喧嚣与意气之后，真能凭借这副严密而僵硬的筋骨，一步步造就出那个活在愿景里、却再也回不去的<span class="quo">“最强大的少儿编程社区”</span>。</p>
+    </div>
+
+    <div class="modal-foot">
+      <button class="modal-close" type="button">收下这份祝福</button>
+    </div>
+  </div>
+</div>
+
 <!-- 每次进入都问一遍，不记住选择 -->
 <div class="ask" id="ask" role="dialog" aria-modal="true" aria-labelledby="ask-title">
   <div class="ask-card">
-    <div class="ask-icon" aria-hidden="true">😭</div>
-    <p class="ask-title" id="ask-title">要听背景音乐吗</p>
-    <p class="ask-sub">释怀一切吧</p>
+    <div class="ask-icon" aria-hidden="true">💐</div>
+    <p class="ask-title" id="ask-title">编程猫社区打破质疑，现已以半瘫形态回归</p>
+    <p class="ask-sub">天不生我编程猫社区，少儿编程社区万古如长夜！<br>我们已更新全新的背景音乐<span class="ask-song">《后来的我们》</span>，欢迎聆听</p>
     <div class="ask-btns">
       <button class="ask-btn" id="ask-no" type="button">算了</button>
       <button class="ask-btn primary" id="ask-yes" type="button" autofocus>听</button>
@@ -720,13 +912,55 @@
           aria-pressed="false" aria-label="开启烟花" title="开启烟花">🔥</button>
 </div>
 
-<audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
+<!-- ?v= 换歌时改一下，避免老访客命中缓存里的旧曲 -->
+<audio id="bgm" src="bgm.mp3?v=2" loop preload="auto"></audio>
+<script src="lyrics.js"></script>
 
 <script>
   // ══ 计时 ══════════════════════════════════
   // 起始时间：2026-06-23 16:58:00（东八区），写死偏移量，任何时区打开结果一致
   const START = new Date('2026-06-23T16:58:00+08:00').getTime();
-  const BASE_TITLE = '编程猫社区已经死多长时间了';
+
+  // 计时起点：默认「半瘫」，可切回「全死」。不记住选择，每次进来都是半瘫
+  const MODES = {
+    half: {
+      start: new Date('2026-11-20T23:00:00+08:00').getTime(),
+      title: '编程猫社区已经恢复（半瘫）多长时间了',
+      verb: '半瘫',
+      since: '2026-11-20 23:00',
+    },
+    dead: {
+      start: START,
+      title: '编程猫社区已经死多长时间了',
+      verb: '死',
+      since: '2026-06-23 16:58',
+    },
+  };
+  let mode = MODES.half;
+  let BASE_TITLE = mode.title;
+  const headline = document.getElementById('headline');
+  const modeOpts = [...document.querySelectorAll('.mode-opt')];
+
+  function setMode(key) {
+    mode = MODES[key];
+    BASE_TITLE = mode.title;
+    headline.textContent = mode.title;
+    modeOpts.forEach((o) => o.setAttribute('aria-checked', String(o.dataset.mode === key)));
+    document.querySelectorAll('.desc[data-desc]').forEach((p) => { p.hidden = p.dataset.desc !== key; });
+    last.s = null;   // 强制下一帧刷新标签页标题
+  }
+
+  modeOpts.forEach((o) => o.addEventListener('click', () => setMode(o.dataset.mode)));
+
+  // 单选组的方向键习惯：左右切换
+  document.querySelector('.mode-group').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const i = modeOpts.findIndex((o) => o.getAttribute('aria-checked') === 'true');
+    const next = modeOpts[(i + 1) % modeOpts.length];
+    setMode(next.dataset.mode);
+    next.focus();
+  });
 
   const el = {
     d: document.getElementById('d'),
@@ -743,7 +977,7 @@
   let now = { d: 0, h: 0, m: 0, s: 0, ms: 0 };
 
   function tick() {
-    let diff = Date.now() - START;
+    let diff = Date.now() - mode.start;
     if (diff < 0) diff = 0;
 
     const ms = diff % 1000;
@@ -800,8 +1034,8 @@
 
   btn.addEventListener('click', () => {
     const { d, h, m, s } = now;
-    const text = `编程猫社区已经死了 ${d} 天 ${pad(h, 2)} 时 ${pad(m, 2)} 分 ${pad(s, 2)} 秒（自 2026-06-23 16:58 起）\n`
-      + `也想知道编程猫死了多久？访问：https://gg.hachimlab.top`;
+    const text = `编程猫社区已经${mode.verb}了 ${d} 天 ${pad(h, 2)} 时 ${pad(m, 2)} 分 ${pad(s, 2)} 秒（自 ${mode.since} 起）\n`
+      + `也想知道编程猫${mode.verb}了多久？访问：https://gg.hachimlab.top`;
 
     // file:// 下 clipboard API 可能不可用，失败时回退到 execCommand
     if (navigator.clipboard && window.isSecureContext) {
@@ -864,53 +1098,173 @@
   bgm.addEventListener('play', syncToggle);
   bgm.addEventListener('pause', syncToggle);
 
-  // ══ 贺词弹窗 ══════════════════════════════
-  const banner = document.getElementById('banner');
-  const greet = document.getElementById('greet');
-  const greetClose = document.getElementById('greet-close');
+  // ══ 特效歌词 ══════════════════════════════
+  // 数据在 lyrics.js 里（[秒, 文本]，已按时间排好，空串表示间奏）。没加载到就一直显示轮播。
+  // 两排交替：第 k 句放在第 k % 2 排，另一排提前摆好下一句候场。
+  // 一句唱完，它那一排立刻换成再下一句 —— 和 KTV 双行字幕一个路数。
+  // 性能：每帧只做数字比较；碰 DOM 的只有「换句」和「多点亮一个字」，每秒几次
+  const RAW = (window.LYRICS || []).filter((r) => Array.isArray(r));
+  const media = document.getElementById('media');
+  const lyRows = [document.getElementById('ly-r0'), document.getElementById('ly-r1')];
 
-  function openGreet() {
-    greet.hidden = false;
-    greetClose.focus();
+  // 只留有字的句子；每句的结束时间 = 下一条（包括间奏空行）的开始时间
+  const LINES_LY = [];
+  RAW.forEach(([t, text], n) => {
+    if (!text) return;
+    const next = RAW[n + 1];
+    LINES_LY.push({ start: t, end: next ? next[0] : Infinity, text });
+  });
+
+  // 每排当前摆的是第几句、它的字节点、点亮到第几个字
+  const rowState = lyRows.map(() => ({ idx: -1, chars: [], lit: 0 }));
+  let lyFrame = 0;
+
+  // 第一句还没唱完的那句（可能正在唱，也可能还在候场）
+  function headAt(t) {
+    let lo = 0, hi = LINES_LY.length - 1, ans = LINES_LY.length;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (LINES_LY[mid].end > t) { ans = mid; hi = mid - 1; } else lo = mid + 1;
+    }
+    return ans;
+  }
+
+  function fillRow(r, idx) {
+    const st = rowState[r];
+    const row = lyRows[r];
+    st.idx = idx;
+    st.lit = 0;
+    row.textContent = '';
+    const line = LINES_LY[idx];
+    st.chars = line ? [...line.text].map((c) => {
+      const s = document.createElement('span');
+      s.className = 'ch';
+      s.textContent = c;
+      row.appendChild(s);
+      return s;
+    }) : [];
+    // 新句子从下方淡入
+    if (line && !LY_REDUCED) {
+      row.animate(
+        [{ opacity: 0, transform: 'translateY(10px)' }, { transform: 'none' }],
+        { duration: 420, easing: 'cubic-bezier(.2, .8, .3, 1)' }
+      );
+    }
+  }
+
+  const LY_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function lyricTick() {
+    const t = bgm.currentTime;
+    const k = headAt(t);
+
+    // 第 k 句和第 k+1 句各就各位
+    for (const idx of [k, k + 1]) {
+      const r = idx % 2;
+      if (rowState[r].idx !== idx) fillRow(r, idx);
+    }
+
+    const cur = LINES_LY[k];
+    const singing = cur && cur.start <= t;
+    lyRows.forEach((row, r) => row.classList.toggle('active', singing && r === k % 2));
+
+    if (singing) {
+      const st = rowState[k % 2];
+      const n = st.chars.length;
+      // 句后有长间奏时，别把放大拖到下一句才走完：按字数估一个演唱时长封顶
+      const span = Math.max(0.6, Math.min(cur.end - cur.start, n * 0.42 + 0.8));
+      const lit = Math.ceil(Math.min(1, (t - cur.start) / span) * n);
+      while (st.lit < lit) st.chars[st.lit++].classList.add('lit');
+    }
+
+    lyFrame = requestAnimationFrame(lyricTick);
+  }
+
+  function lyricSync() {
+    const on = LINES_LY.length > 0 && !bgm.paused;
+    media.classList.toggle('singing', on);
+    document.body.classList.toggle('singing', on);
+    cancelAnimationFrame(lyFrame);
+    lyFrame = 0;
+    if (on) lyFrame = requestAnimationFrame(lyricTick);
+  }
+
+  bgm.addEventListener('play', lyricSync);
+  bgm.addEventListener('pause', lyricSync);
+
+  // ══ 贺词弹窗 ══════════════════════════════
+  // 每条横幅用 data-modal 指向自己的贺词弹窗
+  let openModal = null;     // 当前打开的弹窗
+  let openerBanner = null;  // 打开它的横幅，关掉后焦点还回去
+
+  function openGreet(banner) {
+    const modal = document.getElementById(banner.dataset.modal);
+    openModal = modal;
+    openerBanner = banner;
+    modal.hidden = false;
+    modal.querySelector('.modal-close').focus();
     fwVolley();   // 纪念日才会真的响，平日里这句是空转
   }
 
   function closeGreet() {
-    greet.hidden = true;
-    banner.focus();   // 焦点还回横幅，键盘用户不会掉到页面开头
+    if (!openModal) return;
+    openModal.hidden = true;
+    openModal = null;
+    openerBanner.focus();   // 焦点还回横幅，键盘用户不会掉到页面开头
   }
 
-  banner.addEventListener('click', openGreet);
-  greetClose.addEventListener('click', closeGreet);
+  document.querySelectorAll('.banner[data-modal]').forEach((banner) => {
+    banner.addEventListener('click', () => openGreet(banner));
+  });
 
-  // 点卡片外的遮罩也算关闭
-  greet.addEventListener('click', (e) => {
-    if (e.target === greet) closeGreet();
+  document.querySelectorAll('.modal').forEach((modal) => {
+    modal.querySelector('.modal-close').addEventListener('click', closeGreet);
+    // 点卡片外的遮罩也算关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeGreet();
+    });
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !greet.hidden) closeGreet();
+    if (e.key === 'Escape' && openModal) closeGreet();
   });
 
   // ══ 弹幕 ══════════════════════════════════
+  // 分句自 https://shequ.codemao.cn/static/community-announcement.html（2026-11-20）
   const LINES = [
     '亲爱的训练师们 🥺👉👈',
-    '感谢大家一直以来对编程猫社区的支持与陪伴 🙏✨',
-    '为了持续维护更安全更健康更清朗的社区环境保障大家的创作浏览与交流体验 🌈🕊️',
-    '我们将于2026年6月23日起对社区进行一次内容安全专项升级 🔧😇',
-    '升级期间社区部分功能将临时暂停访问或展示恢复时间将根据升级进度另行通知 ⏳🙂',
-    '本次调整启动较为紧急给大家带来的不便我们非常抱歉 😅🙇',
-    '社区承载了许多训练师的作品帖子评论和互动内容 📦💭',
-    '随着内容数量不断增加我们也需要用更严格更细致的方式对历史内容和安全机制进行全面检查与优化 🔍🧹',
-    '这是一项必须尽快推进的工作也是为了让社区能够更稳定更安心地陪伴大家继续创作 🚀🫠',
-    '本次升级将重点围绕以下方向进行 📋👇',
-    '对社区历史存量内容进行集中排查与清理 🗑️💀',
-    '优化内容审核机制提升对违规诱导类内容的识别和处理能力 🤖👀',
-    '升级社区安全策略与未成年人保护相关机制 🛡️👶',
-    '我们理解社区相关功能的临时调整会影响大家浏览作品发现内容和参与社区互动的节奏 🎵😐',
-    '也正因为社区对大家很重要我们才更希望认真完成这次升级把可能存在的问题处理得更细更稳一些 💗🤡',
-    '让我们一起守护更安全更清爽更适合创作的编程猫社区 🤝🌱',
-    '在升级期间如果您发现任何可疑内容或遇到问题欢迎通过以下方式联系我们 📮🫥',
+    '感谢大家在社区功能调整期间的理解与耐心等待 🙏✨',
+    '自2026年6月23日起我们持续开展社区内容核查与安全升级 🔧😇',
+    '现将本次功能恢复情况和相关进展告知大家 📢🙂',
+    '随11月20日晚的社区更新以下功能恢复开放 🎉🫠',
+    '首页部分作品展示模块恢复展示 🖼️👀',
+    '发现页恢复访问 🔍🙂',
+    '作品详情页恢复访问作品评论区暂不开放 📄🤐',
+    '作品评论区论坛工作室活动及反馈建议仍暂不开放 🚫😐',
+    '作品创作与发布课程学习登录及个人资料修改等功能继续正常使用 ✅🤡',
+    '由于更新可能需要一些时间才能在各端生效 ⏳😅',
+    '建议大家11月21日再进入社区体验 📅🙃',
+    '其他功能的开放安排请留意后续公告 👂🫥',
+    '本次整改期间我们完成了自研内容识别模型的训练与优化 🤖💪',
+    '并利用该模型对社区历史作品开展集中核查 🔍🧹',
+    '由于社区积累的作品数量庞大 📦💭',
+    '模型的训练与调优也需要反复验证 🔁🧪',
+    '因此本次整改花费了较长时间 🐢⌛',
+    '对于核查发现不符合社区规范的作品我们已作取消发布处理 🗑️💀',
+    '对于经核实批量发布违法信息等严重违规行为的账号 ⚠️👮',
+    '我们已依据编程猫社区行为守则采取永久限制登录措施 🔒🙇',
+    '取消发布不等于删除作品作品仍保留在账号中 📁🙂',
+    '如果发现自己的作品不再公开展示且认为内容符合社区规范可以先尝试重新发布 🔄🤞',
+    '若重新发布仍受限或发布后再次被取消发布 😶🔁',
+    '可联系社区客服并提供作品信息我们会进一步核查 📮🫡',
+    '后续我们会持续升级内容审核能力维护安全健康的社区环境 🛡️🌱',
+    '另外我们注意到在论坛暂停发帖的阶段 👀🧐',
+    '有少数用户通过非常规途径发布帖子 🕵️💻',
+    '目前我们已删除相关帖子并向涉及账号发出警告 📛😤',
+    '请各位用户遵守社区规范配合平台功能调整安排 🤝😇',
+    '感谢大家的理解与配合 🙏🌈',
+    '我们将持续做好社区内容核查与安全保障工作 🧹🛡️',
+    '后续相关进展会通过社区公告同步告知 📢🫥',
   ];
 
   const stage = document.getElementById('danmaku');
@@ -989,7 +1343,18 @@
   const FW_DAYS = [60, 90];
   const FW_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const isFwDay = () => FW_DAYS.includes(Math.floor(Math.max(0, Date.now() - START) / 86400000));
+  // 另有按北京时间日历日放的日子（不跟 16:58 换日口径），比如社区半开放当天
+  const FW_DATES = ['2026-11-20'];
+  const bjDate = () => new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+
+  // 一直放：为 true 时不看日子，默认常开（右下角按钮照样能手动关）。
+  // 想回到只在纪念日放，改回 false 即可
+  const FW_ALWAYS = true;
+
+  const isFwDay = () =>
+    FW_ALWAYS ||
+    FW_DAYS.includes(Math.floor(Math.max(0, Date.now() - START) / 86400000)) ||
+    FW_DATES.includes(bjDate());
 
   const fw = document.getElementById('fireworks');
   const fx = fw.getContext('2d');
